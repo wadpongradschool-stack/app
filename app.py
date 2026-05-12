@@ -65,19 +65,27 @@ SHEET_HEADERS = [
 @st.cache_resource(show_spinner="🔗 เชื่อมต่อ Google Sheets...")
 def get_sheet():
     """Connect once and cache the worksheet object."""
+    # โหลด credentials จาก secrets.toml
     creds_dict = dict(st.secrets["gcp_service_account"])
     creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
     gc = gspread.authorize(creds)
-    sh = gc.open_by_key(st.secrets["SHEET_ID"])
+
+    # ใช้ SHEET_ID ที่อยู่ใน section gcp_service_account
+    SHEET_ID = st.secrets["gcp_service_account"]["SHEET_ID"]
+    sh = gc.open_by_key(SHEET_ID)
+
+    # ตรวจสอบว่ามี worksheet "projects" หรือยัง
     try:
         ws = sh.worksheet("projects")
     except gspread.WorksheetNotFound:
         ws = sh.add_worksheet(title="projects", rows=1000, cols=20)
         ws.append_row(SHEET_HEADERS)
-    # Ensure header row exists
+
+    # ตรวจสอบ header row
     first = ws.row_values(1)
     if first != SHEET_HEADERS:
         ws.insert_row(SHEET_HEADERS, 1)
+
     return ws
 
 def load_projects():
