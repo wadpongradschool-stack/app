@@ -1,18 +1,26 @@
 import streamlit as st
-import pandas as pd
 import gspread
+import pandas as pd
 import json
 from datetime import datetime
 from google.oauth2.service_account import Credentials
 
+# ═══════════════════════════════════════
+# CONFIG
+# ═══════════════════════════════════════
 st.set_page_config(
     page_title="Smart Training System",
     page_icon="🏫",
     layout="wide",
+    initial_sidebar_state="expanded"
 )
 
+# ═══════════════════════════════════════
+# MODERN UI
+# ═══════════════════════════════════════
 st.markdown("""
 <style>
+
 @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
 
 html, body, [class*="css"] {
@@ -20,63 +28,136 @@ html, body, [class*="css"] {
 }
 
 .stApp {
-    background: linear-gradient(135deg, #0f172a 0%, #111827 100%);
+    background:
+    radial-gradient(circle at top left, #1e3a8a 0%, transparent 25%),
+    radial-gradient(circle at bottom right, #0f766e 0%, transparent 25%),
+    #020617;
 }
 
 [data-testid="stSidebar"] {
-    background: #111827;
+    background: rgba(15,23,42,0.95);
+    border-right: 1px solid rgba(255,255,255,0.08);
+}
+
+.block-container {
+    padding-top: 2rem;
+}
+
+.glass-card {
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 24px;
+    padding: 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
 }
 
 .metric-card {
-    background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
-    border-radius: 20px;
-    padding: 24px;
+    background: linear-gradient(135deg,#2563eb,#06b6d4);
+    border-radius: 24px;
+    padding: 28px;
     color: white;
+    box-shadow: 0 12px 35px rgba(37,99,235,0.35);
 }
 
 .metric-number {
-    font-size: 40px;
+    font-size: 42px;
     font-weight: 700;
+    line-height: 1;
+}
+
+.metric-label {
+    margin-top: 8px;
+    opacity: .9;
+    font-size: 15px;
 }
 
 .project-card {
     background: rgba(255,255,255,0.05);
-    border-radius: 18px;
-    padding: 20px;
-    margin-bottom: 16px;
     border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 24px;
+    padding: 22px;
+    margin-bottom: 18px;
+    transition: 0.25s ease;
 }
 
-.badge {
-    background: #1e293b;
-    color: #38bdf8;
-    padding: 5px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    margin-right: 5px;
+.project-card:hover {
+    transform: translateY(-4px);
+    border: 1px solid #38bdf8;
+    box-shadow: 0 14px 30px rgba(56,189,248,0.15);
 }
 
-h1, h2, h3, p, div, label {
-    color: white !important;
+.teacher-pill {
+    display:inline-block;
+    padding:8px 14px;
+    border-radius:999px;
+    background:rgba(56,189,248,0.15);
+    color:#7dd3fc;
+    margin:4px;
+    font-size:13px;
+    font-weight:500;
+}
+
+.tag {
+    display:inline-block;
+    padding:6px 12px;
+    border-radius:999px;
+    background:#111827;
+    color:#67e8f9;
+    font-size:12px;
+    margin-right:6px;
+}
+
+h1,h2,h3,p,label,div {
+    color:white !important;
 }
 
 .stButton button {
-    border-radius: 14px;
-    border: none;
-    background: linear-gradient(135deg, #0ea5e9 0%, #22c55e 100%);
-    color: white;
-    font-weight: 600;
-    height: 48px;
+    width:100%;
+    border:none;
+    border-radius:16px;
+    height:52px;
+    font-size:15px;
+    font-weight:600;
+    color:white;
+    background:linear-gradient(135deg,#0ea5e9,#22c55e);
+    box-shadow:0 10px 24px rgba(14,165,233,.25);
+    transition:0.2s ease;
 }
+
+.stButton button:hover {
+    transform:translateY(-2px) scale(1.01);
+}
+
+[data-testid="stTextInput"] input,
+[data-testid="stTextArea"] textarea {
+    border-radius:16px !important;
+    background:rgba(255,255,255,0.05) !important;
+    color:white !important;
+    border:1px solid rgba(255,255,255,0.1) !important;
+}
+
+.stSelectbox div[data-baseweb="select"] {
+    border-radius:16px !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
+# ═══════════════════════════════════════
+# DATA
+# ═══════════════════════════════════════
 TEACHERS = [
     "ผอ.อำพร คงเจริญ",
     "ครูนภาวรรณ สันดิษฐ์",
     "ครูธารารัตน์ สามิภักดิ์",
     "ครูณัฐวุฒิ คำจันทร์",
     "ครูชมพูนุท บุญอากาศ",
+    "ครูมณีมัญช์ ศาสตร์ทรัพย์",
+    "ครูกชกร อรัญวัชน์",
+    "ครูรักชนก โสภักต์",
+    "ครูณิชนันทน์ การบุญ",
 ]
 
 AGENCIES = [
@@ -84,11 +165,14 @@ AGENCIES = [
     "สำนักงานเขต",
     "โรงเรียน",
     "เทศบาล",
-    "เอกชน",
+    "เอกชน"
 ]
 
 SEMESTERS = ["1/2569", "2/2569"]
 
+# ═══════════════════════════════════════
+# GOOGLE SHEETS
+# ═══════════════════════════════════════
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
@@ -104,21 +188,20 @@ HEADERS = [
     "admin",
     "teachers",
     "note",
-    "createdAt",
+    "createdAt"
 ]
 
 @st.cache_resource
 def connect_sheet():
+
     creds = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"],
-        scopes=SCOPES,
+        scopes=SCOPES
     )
 
     gc = gspread.authorize(creds)
 
-    sheet_id = st.secrets["SHEET_ID"]
-
-    sh = gc.open_by_key(sheet_id)
+    sh = gc.open_by_key(st.secrets["SHEET_ID"])
 
     try:
         ws = sh.worksheet("projects")
@@ -129,15 +212,18 @@ def connect_sheet():
     return ws
 
 def load_projects():
+
     try:
         ws = connect_sheet()
+
         rows = ws.get_all_records()
 
         projects = []
 
         for row in rows:
+
             try:
-                row["teachers"] = json.loads(row.get("teachers", "[]"))
+                row["teachers"] = json.loads(row["teachers"])
             except:
                 row["teachers"] = []
 
@@ -145,11 +231,11 @@ def load_projects():
 
         return projects
 
-    except Exception as e:
-        st.error(f"โหลดข้อมูลไม่สำเร็จ: {e}")
+    except:
         return []
 
 def save_project(project):
+
     ws = connect_sheet()
 
     ws.append_row([
@@ -162,18 +248,25 @@ def save_project(project):
         project["admin"],
         json.dumps(project["teachers"], ensure_ascii=False),
         project["note"],
-        project["createdAt"],
+        project["createdAt"]
     ])
 
+# ═══════════════════════════════════════
+# SESSION
+# ═══════════════════════════════════════
 if "projects" not in st.session_state:
     st.session_state.projects = load_projects()
 
+# ═══════════════════════════════════════
+# SIDEBAR
+# ═══════════════════════════════════════
 with st.sidebar:
+
     st.markdown("""
-    <div style="text-align:center;padding:20px;">
-        <h1>🏫</h1>
-        <h2>Smart Training</h2>
-        <p>โรงเรียนวัดโป่งแรด</p>
+    <div style="text-align:center;padding:25px;">
+        <div style="font-size:52px;">🏫</div>
+        <h2 style="margin-bottom:0;">Smart Training</h2>
+        <p style="opacity:.8;">โรงเรียนวัดโป่งแรด</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -182,13 +275,21 @@ with st.sidebar:
         [
             "📊 Dashboard",
             "➕ เพิ่มโครงการ",
-            "📋 รายการทั้งหมด",
+            "📋 รายการโครงการ"
         ],
         label_visibility="collapsed"
     )
 
-    st.metric("โครงการทั้งหมด", len(st.session_state.projects))
+    st.divider()
 
+    st.metric(
+        "จำนวนโครงการ",
+        len(st.session_state.projects)
+    )
+
+# ═══════════════════════════════════════
+# DASHBOARD
+# ═══════════════════════════════════════
 if menu == "📊 Dashboard":
 
     st.title("📊 Dashboard")
@@ -197,9 +298,9 @@ if menu == "📊 Dashboard":
 
     total_projects = len(projects)
 
-    total_teachers = len(set(
-        t for p in projects for t in p.get("teachers", [])
-    ))
+    total_teachers = len(
+        set(t for p in projects for t in p.get("teachers", []))
+    )
 
     total_join = sum(
         len(p.get("teachers", []))
@@ -208,85 +309,121 @@ if menu == "📊 Dashboard":
 
     c1, c2, c3 = st.columns(3)
 
-    with c1:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-number">{total_projects}</div>
-            <div>โครงการทั้งหมด</div>
-        </div>
-        """, unsafe_allow_html=True)
+    metrics = [
+        ("📁", total_projects, "โครงการทั้งหมด"),
+        ("👨‍🏫", total_teachers, "ครูที่เข้าร่วม"),
+        ("📈", total_join, "จำนวนเข้าร่วม")
+    ]
 
-    with c2:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-number">{total_teachers}</div>
-            <div>ครูที่เข้าร่วม</div>
-        </div>
-        """, unsafe_allow_html=True)
+    for col, data in zip([c1, c2, c3], metrics):
 
-    with c3:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div class="metric-number">{total_join}</div>
-            <div>จำนวนเข้าร่วม</div>
-        </div>
-        """, unsafe_allow_html=True)
+        icon, num, label = data
 
-    st.markdown("---")
+        with col:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div style="font-size:30px;">{icon}</div>
+                <div class="metric-number">{num}</div>
+                <div class="metric-label">{label}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-    st.subheader("🕒 โครงการล่าสุด")
+    st.markdown("### 🕒 โครงการล่าสุด")
 
     if projects:
+
         for p in reversed(projects[-5:]):
 
-            teachers_html = " ".join([
-                f'<span class="badge">{t}</span>'
+            teachers_html = "".join([
+                f'<span class="teacher-pill">{t}</span>'
                 for t in p.get("teachers", [])
             ])
 
             st.markdown(f"""
             <div class="project-card">
                 <h3>{p.get('name')}</h3>
-                <p>🏢 {p.get('agency')}</p>
+
+                <div style="margin-bottom:10px;">
+                    <span class="tag">{p.get('agency')}</span>
+                    <span class="tag">{p.get('semester')}</span>
+                </div>
+
                 <p>📅 {p.get('date')}</p>
                 <p>📍 {p.get('place')}</p>
-                <div>{teachers_html}</div>
+
+                <div style="margin-top:12px;">
+                    {teachers_html}
+                </div>
             </div>
             """, unsafe_allow_html=True)
 
-    else:
-        st.info("ยังไม่มีข้อมูล")
-
+# ═══════════════════════════════════════
+# ADD PROJECT
+# ═══════════════════════════════════════
 elif menu == "➕ เพิ่มโครงการ":
 
     st.title("➕ เพิ่มโครงการ")
 
-    with st.form("project_form"):
+    with st.container():
 
-        name = st.text_input("ชื่อโครงการ")
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 
-        c1, c2 = st.columns(2)
+        with st.form("project_form"):
 
-        with c1:
-            agency = st.selectbox("หน่วยงาน", AGENCIES)
+            name = st.text_input(
+                "ชื่อโครงการ",
+                placeholder="เช่น อบรม AI สำหรับครู"
+            )
 
-        with c2:
-            semester = st.selectbox("ภาคเรียน", SEMESTERS)
+            c1, c2 = st.columns(2)
 
-        date = st.date_input("วันที่")
+            with c1:
+                agency = st.selectbox(
+                    "หน่วยงาน",
+                    AGENCIES
+                )
 
-        place = st.text_input("สถานที่")
+            with c2:
+                semester = st.selectbox(
+                    "ภาคเรียน",
+                    SEMESTERS
+                )
 
-        admin = st.selectbox("ผู้รับผิดชอบ", TEACHERS)
+            date = st.date_input("วันที่")
 
-        teachers = st.multiselect(
-            "ผู้เข้าร่วม",
-            TEACHERS
-        )
+            place = st.text_input(
+                "สถานที่",
+                placeholder="ห้องประชุม"
+            )
 
-        note = st.text_area("หมายเหตุ")
+            admin = st.selectbox(
+                "ผู้รับผิดชอบ",
+                TEACHERS
+            )
 
-        submit = st.form_submit_button("💾 บันทึกข้อมูล")
+            teachers = st.multiselect(
+                "👨‍🏫 ผู้เข้าร่วม",
+                TEACHERS,
+                placeholder="เลือกครูหลายคน..."
+            )
+
+            if teachers:
+
+                pills = "".join([
+                    f'<span class="teacher-pill">{t}</span>'
+                    for t in teachers
+                ])
+
+                st.markdown(pills, unsafe_allow_html=True)
+
+            note = st.text_area(
+                "หมายเหตุ",
+                placeholder="รายละเอียดเพิ่มเติม..."
+            )
+
+            submit = st.form_submit_button("💾 บันทึกข้อมูล")
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
     if submit:
 
@@ -308,28 +445,39 @@ elif menu == "➕ เพิ่มโครงการ":
                 "admin": admin,
                 "teachers": teachers,
                 "note": note,
-                "createdAt": datetime.now().isoformat(),
+                "createdAt": datetime.now().isoformat()
             }
 
             try:
+
                 save_project(project)
+
                 st.session_state.projects.append(project)
 
-                st.success("✅ บันทึกสำเร็จ")
+                st.success("✅ บันทึกข้อมูลสำเร็จ")
+
                 st.balloons()
 
             except Exception as e:
+
                 st.error(f"เกิดข้อผิดพลาด: {e}")
 
-elif menu == "📋 รายการทั้งหมด":
+# ═══════════════════════════════════════
+# PROJECT LIST
+# ═══════════════════════════════════════
+elif menu == "📋 รายการโครงการ":
 
-    st.title("📋 รายการทั้งหมด")
+    st.title("📋 รายการโครงการ")
 
     projects = st.session_state.projects
 
-    search = st.text_input("🔍 ค้นหาโครงการ")
+    search = st.text_input(
+        "🔍 ค้นหาโครงการ",
+        placeholder="พิมพ์ชื่อโครงการ..."
+    )
 
     if search:
+
         projects = [
             p for p in projects
             if search.lower() in p.get("name", "").lower()
@@ -339,17 +487,32 @@ elif menu == "📋 รายการทั้งหมด":
 
         for p in reversed(projects):
 
+            teachers_html = "".join([
+                f'<span class="teacher-pill">{t}</span>'
+                for t in p.get("teachers", [])
+            ])
+
             st.markdown(f"""
             <div class="project-card">
+
                 <h3>{p.get('name')}</h3>
-                <p>🏢 {p.get('agency')}</p>
-                <p>📘 {p.get('semester')}</p>
+
+                <div style="margin-bottom:10px;">
+                    <span class="tag">{p.get('agency')}</span>
+                    <span class="tag">{p.get('semester')}</span>
+                </div>
+
                 <p>📅 {p.get('date')}</p>
                 <p>📍 {p.get('place')}</p>
                 <p>👤 {p.get('admin')}</p>
-                <p>👥 {', '.join(p.get('teachers', []))}</p>
+
+                <div style="margin-top:10px;">
+                    {teachers_html}
+                </div>
+
             </div>
             """, unsafe_allow_html=True)
 
     else:
+
         st.info("ไม่พบข้อมูล")
