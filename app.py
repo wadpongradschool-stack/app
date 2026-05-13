@@ -49,7 +49,7 @@ AGENCY_BADGE = {
     "โรงเรียน": "badge-green", "วัด": "badge-amber",
     "เทศบาล": "badge-coral", "เอกชน": "badge-purple", "อื่นๆ": "badge-coral",
 }
-ADMIN_PASSWORD = "12341234"
+ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
 
 # ─── Google Sheets helpers ───────────────────────────────────────────────────
 SCOPES = [
